@@ -12,6 +12,7 @@
 #include "TimeUtil.hpp"
 
 #define VIDEO_NUM_MAX	48
+#define FRAME_INTERVAL	25000
 
 using namespace cv;
 using namespace std;
@@ -84,6 +85,9 @@ void drawVideo(int channel) {
 	cv::Mat video_image;
 	cv::Mat child_mat = getChildWindow(channel);
 
+	TimeUtil *tu = new TimeUtil();
+	tu->StartCount();
+
 	while (true) {
 		if (vcs[channel].read(video_image)) {
 			cv::resize(video_image, child_mat, child_mat.size());
@@ -92,8 +96,13 @@ void drawVideo(int channel) {
 			std::cout << "drawVideo read video " << channel << " " << inputVideoFiles[channel] << " " << ++frames << " failed" << std::endl;
 		}
 
+		if (frames % 30 == 0) {
+			tu->StopCount("drawVideo " + std::to_string(channel) + " 30 Frames");
+			tu->Report();
+			tu->StartCount();
+		}
 		//video_image.copyTo(child_mat);
-		usleep(100000);
+		usleep(FRAME_INTERVAL);
 	}
 }
 
@@ -106,7 +115,7 @@ void display_window() {
 		cv::imshow(WINDOW_NAME, window_mat);
 		cv::waitKey(1);
 		cout << "display_window " << ++count << endl;
-		usleep(100000);
+		usleep(FRAME_INTERVAL);
 	}
 }
 
@@ -123,13 +132,11 @@ void test_window(int num) {
 			if (vc.read(video_image)) {
 				cv::resize(video_image, child_mat, child_mat.size());
 				//video_image.copyTo(child_mat);
-				//std::cout << "child_mat width " << child_mat.cols << std::endl;
-				//std::cout << "child_mat height " << child_mat.rows << std::endl;
 				
 				//cv::imshow(inputVideoFile, child_mat);
 				cv::imshow(inputVideoFile, window_mat);
 				cv::waitKey(1);
-				usleep(100000);
+				usleep(FRAME_INTERVAL);
 			}
 		}
 	}
@@ -142,8 +149,8 @@ void update_multiple_window(int num) {
 	for (int i = 0; i < num; ++i) {
 		int *idx = new int(i);
 		std::cout << "create thread " << *idx << std::endl;
-		std::thread th(drawVideo, *idx);
-		//std::thread th(&drawVideo, *idx);
+		//std::thread th(drawVideo, *idx);
+		std::thread th(&drawVideo, *idx);
 		threads.push_back(move(th));
 	}
 	
@@ -161,47 +168,41 @@ void drawText(cv::Mat &image) {
 
 void init_window(int num) {
 
-	vc.open(inputVideoFile);
-
-	if (!vc.isOpened()) {
-		std::cout << "open video 0 failed: " << inputVideoFile << std::endl;
-		return;
+	for (int i = 0; i < num; ++i) {
+		cv::VideoCapture vc;
+		std::string inputVideoFile= "videos/" + std::to_string(i) + ".mp4";
+		vc.open(inputVideoFile);
+		if (!vc.isOpened()) {
+			std::cout << "open video " << i << " " << inputVideoFile << " failed" << std::endl;
+			exit_and_release();
+		}
+		vcs.push_back(vc);
+		inputVideoFiles.push_back(inputVideoFile);
 	}
+	//vc.release();
+
 	//window_mat = cv::Mat(window.window_height, window.window_width, CV_8UC3, cv::Scalar(255, 255, 255, 0.1));
-	if (vc.read(window_mat)) {
+	if (vcs[0].read(window_mat)) {
+		// get video image width/height
 		window.window_width = window_mat.cols;
 		window.window_height = window_mat.rows;
 		std::cout << "window_width\t\t"  << window.window_width  << std::endl;
 		std::cout << "window_height\t\t" << window.window_height << std::endl;
-	}
-	//vc.release();
-	vcs.push_back(vc);
-	inputVideoFiles.push_back(inputVideoFile);
 
-	window.row_number = sqrt(num);
-	window.row_number = (window.row_number * window.row_number < num) ? window.row_number + 1 : window.row_number;
-	window.col_number = window.row_number;
-	std::cout << "row_number\t\t" << window.row_number << std::endl;
-	std::cout << "col_number\t\t" << window.col_number << std::endl;
-
-	window.subwindow_width = window.window_width / window.col_number;
-	window.subwindow_height= window.window_height/ window.row_number;
-	std::cout << "subwindow_width\t\t"  << window.subwindow_width  << std::endl;
-	std::cout << "subwindow_height\t" << window.subwindow_height << std::endl;
-
-	if (num <= 1) {
-		return;
-	}
-	for (int i = 1; i < num; ++i) {
-		cv::VideoCapture capture;
-		inputVideoFile= "videos/" + std::to_string(i) + ".mp4";
-		capture.open(inputVideoFile);
-		if (!capture.isOpened()) {
-			std::cout << "open video " << i << " " << inputVideoFile << " failed" << std::endl;
-			exit_and_release();
-		}
-		vcs.push_back(capture);
-		inputVideoFiles.push_back(inputVideoFile);
+		// calculate subwindow cols/rows
+		window.row_number = sqrt(num);
+		window.row_number = (window.row_number * window.row_number < num) ? window.row_number + 1 : window.row_number;
+		window.col_number = window.row_number;
+		std::cout << "row_number\t\t" << window.row_number << std::endl;
+		std::cout << "col_number\t\t" << window.col_number << std::endl;
+	
+		// set subwindow width/height
+		window.subwindow_width = window.window_width / window.col_number;
+		window.subwindow_height= window.window_height/ window.row_number;
+		std::cout << "subwindow_width\t\t"  << window.subwindow_width  << std::endl;
+		std::cout << "subwindow_height\t" << window.subwindow_height << std::endl;
+	} else {
+		exit_and_release();
 	}
 }
 
@@ -220,18 +221,6 @@ void init(int argc, char **argv, int &num) {
 	std::cout << "video_num\t\t" << num << std::endl;
 
 	init_window(num);
-}
-
-
-void* test(void *arg) {
-
-	int count = 0;
-	int channel = *(int*)arg;
-	std::cout << "get channel " << channel << std::endl;
-	while (true) {
-		std::cout << "channel " << channel << " " << count++ << std::endl;
-		usleep(100000);
-	}
 }
 
 
