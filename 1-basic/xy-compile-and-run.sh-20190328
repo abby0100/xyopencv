@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+
+target=opencv-xy
+image=$1
+
+function myecho {
+	echo
+	echo "[+] $1"
+	#sleep 1
+	$1
+}
+
+	cd build/
+	myecho "cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_NEW_PYTHON_SUPPORT=ON -DWITH_LIBV4L=ON -DWITH_V4L=ON -DWITH_FFMPEG=ON"
+	myecho "make clean"
+	myecho "make -j9"
+
+	myecho "./$target ../$image"
+
