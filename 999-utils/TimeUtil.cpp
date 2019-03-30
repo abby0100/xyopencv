@@ -1,8 +1,8 @@
 #include "TimeUtil.hpp"
+#include <iostream>
 
-TimeUtil::TimeUtil() {
-
-}
+TimeUtil::TimeUtil() {}
+TimeUtil::~TimeUtil() {}
 
 void TimeUtil::Report() {
 	int size = funcs.size();
