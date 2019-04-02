@@ -15,5 +15,5 @@ function myecho {
 	myecho "make clean"
 	myecho "make -j9"
 
-	myecho "./$target $VIDEO_NUM"
+	myecho "./$target ../$VIDEO_NUM"
 

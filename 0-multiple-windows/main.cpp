@@ -113,9 +113,11 @@ void display_window() {
 
 	while (true) {
 		cv::imshow(WINDOW_NAME, window_mat);
-		cv::waitKey(1);
 		cout << "display_window " << ++count << endl;
-		usleep(FRAME_INTERVAL);
+
+		//cv::waitKey(1);
+		//usleep(FRAME_INTERVAL);
+		if( cv::waitKey(33) >= 0 ) break;
 	}
 }
 
